@@ -5,9 +5,11 @@ client = MongoClient('mongodb+srv://test:FioTestPass@bindata-lhxe1.mongodb.net/t
 db = client.bintestdb
 
 def pull_first_res(db):
+    # pulls most recent result from db
     res = db.find().sort('datetime', -1).limit(1)
     return res[0]
 
 def pull_all_res(db):
+    # pulls all results from db
     res = db.find().sort('datetime', -1)
     return res
