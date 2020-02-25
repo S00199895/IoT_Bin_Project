@@ -10,5 +10,5 @@ def push_bin(vol, db):
        'percentage_full': vol,
        'datetime': time
     } 
-    res = db.bintestdb.insert_one(bin)
+    res = db.insert_one(bin)
     return [bin, res.inserted_id]
