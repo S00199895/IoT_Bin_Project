@@ -26,6 +26,7 @@ void setup() {
 void loop() {
     if (digitalRead(MOTION_SENSOR) == 1)
     {
-        p.runShellCommandAsynchronously("python " + path + "arduino_bin.py");
+        String vol = analogRead(0, IR_SENSOR);
+        p.runShellCommandAsynchronously("python " + path + "arduino_bin.py " + vol);
     }
 }

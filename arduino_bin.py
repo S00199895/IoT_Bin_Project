@@ -1,5 +1,6 @@
 #!usr/bin/python
 
+import sys
 from pymongo import MongoClient
 from pprint import pprint
 from datetime import datetime
@@ -18,8 +19,6 @@ db = db.bintestdb
 
 board = bridgeclient()
 
-while(true):
-    if(board.get('D3') == 1):
-        vol = board.get(IR_SENSOR)
-        push.push_bin(vol, db)
-        pprint(pull.pull_first_res(db))
+vol = board.get(IR_SENSOR)
+push.push_bin(vol, db)
+pull.pull_first_res(db)
