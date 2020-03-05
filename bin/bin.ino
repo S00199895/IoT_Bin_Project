@@ -1,120 +1,101 @@
-/*
-  SendDataToGoogleSpreadsheet
-
-  Demonstrates appending a row of data to a Google spreadsheet from the Arduino Yun 
-  using the Temboo Arduino Yun SDK.  
-
-  This example code is in the public domain.
-*/
-
 #include <Bridge.h>
 #include <Temboo.h>
-#include "TembooAccount.h" // contains Temboo account information
+#include <Process.h>
+#include "TembooAccount.h" // contains Temboo account information, as described below
 
-/*** SUBSTITUTE YOUR VALUES BELOW: ***/
+int calls = 1;               // Execution count, so this doesn't run forever
+int maxCalls = 10;           // Maximum number of times the Choreo should be executed
+const int SENSOR_100 = 4;    // Sensor for the bin being 100% full
+const int SENSOR_50 = 3;     // Sensor for the bin being 50% full
+const int MOTION_SENSOR = 2; // Sensor to check when someone puts something into the bin
 
-// Note that for additional security and reusability, you could
-// use #define statements to specify these values in a .h file.
 
-const String GOOGLE_CLIENT_ID = "216186659341-1qeo38ffful8eiocv2aft1sqv0l1hss8.apps.googleusercontent.com";
-const String GOOGLE_CLIENT_SECRET = "z3HRsuUjYhOnRJKaRx5wPOYi";
-const String GOOGLE_REFRESH_TOKEN = "1//0dJTounCgbQ82CgYIARAAGA0SNwF-L9IrMn7WaN-XNYD45jeomV07ANBrzlY4wLaR4lUF2hoI-X4vEIJYC4nNlhRxzccMSt1O9dE";
-const int MOTION_SENSOR = 2;
-const int SENSOR_50 = 3;
-const int SENSOR_100 = 4;
-
-// The ID of the spreadsheet you want to send data to
-// which can be found in the URL when viewing your spreadsheet at Google. For example, 
-// the ID in the URL below is: "1tvFW2n-xFFJCE1q5j0HTetOsDhhgw7_998_K4sFtk"
-// Sample URL: https://docs.google.com/spreadsheets/d/1SBkVYVsW4rjIVRC-3v-TVYP002WAhGfs3IrOZAImqwM/edit
-const String SPREADSHEET_ID = "1o7Myyf2URCXKUwdFFud3vSdyO_oSAdBZpprtNg2UsBw";
-
-int numRuns = 1;   // execution count, so this doesn't run forever
-int maxRuns = 5;   // the max number of times the Google Spreadsheet Choreo should run
+Process date;
+int hours, minutes, seconds;     // Results
+int lastSecond = -1;             //Impossible val for comp
 
 void setup() {
+  Bridge.begin();     // init bridge
+  Serial.begin(9600); // init serial
   
-  // for debugging, wait until a serial console is connected
-  Serial.begin(9600);
-  delay(4000);
   while(!Serial);
-
-  Serial.print("Initializing the bridge... ");
-  Bridge.begin();
-  Serial.println("Done!\n");
+  Serial.println("Arduino bin");
 }
 
-void loop()
+String GetDate()
 {
+  date.begin("/bin/date");
+  date.addParameter("+%d/%m/%Y %T");
+  date.run();
 
-  // while we haven't reached the max number of runs...
-  if (numRuns <= maxRuns) {
+  while (date.available() > 0)
+  {
+    String timeString = date.readString();
+    return timeString;
+  }
+}
 
-    Serial.println("Running AppendValues - Run #" + String(numRuns++));
+void loop() {
+  if (calls <= maxCalls)
+  {
+    if(digitalRead(MOTION_SENSOR) == 1)
+    {
+      // Invoke the Temboo client
+      TembooChoreo SendEmailChoreo; 
+      SendEmailChoreo.begin();
+  
+      // Set Temboo account credentials
+      SendEmailChoreo.setAccountName(TEMBOO_ACCOUNT);
+      SendEmailChoreo.setAppKeyName(TEMBOO_APP_KEY_NAME);
+      SendEmailChoreo.setAppKey(TEMBOO_APP_KEY);
 
-    // get the number of milliseconds this sketch has been running
-    unsigned long now = millis();
-    
-    Serial.println("Getting sensor value...");
+      // Identify the Choreo to run
+      SendEmailChoreo.setChoreo("/Library/Google/Gmail/SendEmail");
+      
+      // Set Choreo inputs
+      SendEmailChoreo.addInput("FromAddress", "binarduinoyun@gmail.com");
+      SendEmailChoreo.addInput("Username", "binarduinoyun@gmail.com");
+      SendEmailChoreo.addInput("ToAddress", "binarduinoyun@gmail.com");
+      SendEmailChoreo.addInput("MessageBody", "Bin warning");
+      SendEmailChoreo.addInput("Password", "atpwckugzjrwgakz");
 
-    // get the value we want to append to our spreadsheet
-    unsigned int halfSensor = digitalRead(SENSOR_50);
-    unsigned int fullSensor = digitalRead(SENSOR_100);
+      // Get the current date and time
 
-    Serial.println("Appending value to spreadsheet...");
-
-    // we need a Process object to send a Choreo request to Temboo
-    TembooChoreo AppendValuesChoreo;
-
-    // invoke the Temboo client
-    // NOTE that the client must be reinvoked and repopulated with
-    // appropriate arguments each time its run() method is called.
-    AppendValuesChoreo.begin();
-    
-    // set Temboo account credentials
-    AppendValuesChoreo.setAccountName(TEMBOO_ACCOUNT);
-    AppendValuesChoreo.setAppKeyName(TEMBOO_APP_KEY_NAME);
-    AppendValuesChoreo.setAppKey(TEMBOO_APP_KEY);
-    
-    // identify the Temboo Library choreo to run (Google > Sheets > AppendValues)
-    AppendValuesChoreo.setChoreo("/Library/Google/Sheets/AppendValues");
-    
-    // set the required Choreo inputs
-    // see https://www.temboo.com/library/Library/Google/Sheets/AppendValues/ 
-    // for complete details about the inputs for this Choreo
-    AppendValuesChoreo.addInput("RefreshToken", "1//0dJTounCgbQ82CgYIARAAGA0SNwF-L9IrMn7WaN-XNYD45jeomV07ANBrzlY4wLaR4lUF2hoI-X4vEIJYC4nNlhRxzccMSt1O9dE");
-    AppendValuesChoreo.addInput("ClientSecret", "z3HRsuUjYhOnRJKaRx5wPOYi");
-    AppendValuesChoreo.addInput("Values", "[[1,1,1]]");
-    AppendValuesChoreo.addInput("ClientID", "216186659341-1qeo38ffful8eiocv2aft1sqv0l1hss8.apps.googleusercontent.com");
-    AppendValuesChoreo.addInput("SpreadsheetID", "1o7Myyf2URCXKUwdFFud3vSdyO_oSAdBZpprtNg2UsBw");
-    
-
-    // convert the time and sensor values to a json array
-    String rowData = "[[\"" + String(now) + "\", \"" + String(halfSensor) + "\", \"" + String(fullSensor) + "\"]]";
-
-    // add the RowData input item
-    AppendValuesChoreo.addInput("Values", rowData);
-
-    // run the Choreo and wait for the results
-    // The return code (returnCode) will indicate success or failure 
-    unsigned int returnCode = AppendValuesChoreo.run();
-
-    // return code of zero (0) means success
-    if (returnCode == 0) {
-      Serial.println("Success! Appended " + rowData);
-      Serial.println("");
-    } else {
-      // return code of anything other than zero means failure  
-      // read and display any error messages
-      while (AppendValuesChoreo.available()) {
-        char c = AppendValuesChoreo.read();
+      delay(10000);
+      String currentTime = GetDate();
+      
+      if(digitalRead(SENSOR_100) == 0)
+      {
+        SendEmailChoreo.addInput("Subject", "Your bin is currently full.\n" + currentTime);
+        Serial.println(currentTime);
+        Serial.println("Bin full");
+        SendEmailChoreo.run();
+      }
+      else if (digitalRead(SENSOR_50) == 0)
+      {  
+        
+        SendEmailChoreo.addInput("Subject", "Your bin is currently half full.\n" + currentTime);
+        Serial.println(currentTime);
+        Serial.println("Bin half full");
+        SendEmailChoreo.run();
+      }
+      else
+      {
+        Serial.println(currentTime);
+        Serial.println("Bin empty");
+      }
+      
+      while(SendEmailChoreo.available()) {
+        char c = SendEmailChoreo.read();
         Serial.print(c);
       }
+      SendEmailChoreo.close();
     }
-
-    AppendValuesChoreo.close();
   }
-
+  else 
+  {
+    Serial.println("Max calls given");
+  }
   Serial.println("Waiting...");
-  delay(5000); // wait 5 seconds between AppendValues calls
+  delay(10000);
 }
