@@ -1,5 +1,9 @@
 # IoT_Bin_Project
 
-Sends an email to designated account when the bin is either half or completely full.
+This project uses an arduino Yun, 2 IR distance interrupters, and a PIR motion sensor
+with the grove kit to send data to a google spreadsheet over Wi-Fi.
 
-Uses arduino Yun and Temboo to send it.
+SpreadSheet = https://docs.google.com/spreadsheets/d/1Qyy25yesqFlnQmXB5tJPd1JoPqWuW3Znv48zgeDISZI/
+
+Inside ./ArduinoBinWeb is a mock website, which pulls data from the spreadsheet and displays
+it in the browser.
