@@ -1,26 +1,27 @@
-#include <Bridge.h>
-#include <Temboo.h>
-#include <Process.h>
-#include "TembooAccount.h" // contains Temboo account information, as described below
+  
+/*
+Derived from Yún HTTP Client Sketch
+and https://github.com/marloft/PushingBoxGoogleSpreadsheet/blob/master/PushingBoxGoogleSpreadsheet.ino
+ */
 
-int calls = 1;               // Execution count, so this doesn't run forever
-int maxCalls = 10;           // Maximum number of times the Choreo should be executed
-const int SENSOR_100 = 4;    // Sensor for the bin being 100% full
-const int SENSOR_50 = 3;     // Sensor for the bin being 50% full
-const int MOTION_SENSOR = 2; // Sensor to check when someone puts something into the bin
+
+#include <Bridge.h>
+#include <HttpClient.h>
+#include <Process.h>
+
+const int MOTION_SENSOR = 2;  // Sensor to check when someone puts item int bin
+const int SENSOR_50 = 3;      // Sensor for bin being 50% full 
+const int SENSOR_100 = 4;     // Sensor for bin being 100% full
+
+char devid[] = "v8C89B8298357893";         // DEVICE ID for PushingBox
+char serverName[] = "api.pushingbox.com";  // PushingBox API url
+boolean DEBUG = true;
 
 
 Process date;
-int hours, minutes, seconds;     // Results
-int lastSecond = -1;             //Impossible val for comp
+int hours, minutes, seconds; 
+int lastSecond = -1;
 
-void setup() {
-  Bridge.begin();     // init bridge
-  Serial.begin(9600); // init serial
-  
-  while(!Serial);
-  Serial.println("Arduino bin");
-}
 
 String GetDate()
 {
@@ -35,67 +36,43 @@ String GetDate()
   }
 }
 
+
+void setup() {
+  // Blink light setting up bridge
+  pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
+  Bridge.begin();
+  digitalWrite(13, HIGH);
+
+  Serial.begin(9600);
+  while (!Serial); // wait for a serial connection
+}
+
 void loop() {
-  if (calls <= maxCalls)
-  {
-    if(digitalRead(MOTION_SENSOR) == 1)
-    {
-      // Invoke the Temboo client
-      TembooChoreo SendEmailChoreo; 
-      SendEmailChoreo.begin();
   
-      // Set Temboo account credentials
-      SendEmailChoreo.setAccountName(TEMBOO_ACCOUNT);
-      SendEmailChoreo.setAppKeyName(TEMBOO_APP_KEY_NAME);
-      SendEmailChoreo.setAppKey(TEMBOO_APP_KEY);
+  HttpClient client;
 
-      // Identify the Choreo to run
-      SendEmailChoreo.setChoreo("/Library/Google/Gmail/SendEmail");
-      
-      // Set Choreo inputs
-      SendEmailChoreo.addInput("FromAddress", "binarduinoyun@gmail.com");
-      SendEmailChoreo.addInput("Username", "binarduinoyun@gmail.com");
-      SendEmailChoreo.addInput("ToAddress", "binarduinoyun@gmail.com");
-      SendEmailChoreo.addInput("MessageBody", "Bin warning");
-      SendEmailChoreo.addInput("Password", "atpwckugzjrwgakz");
-
-      // Get the current date and time
-
-      delay(10000);
-      String currentTime = GetDate();
-      
-      if(digitalRead(SENSOR_100) == 0)
-      {
-        SendEmailChoreo.addInput("Subject", "Your bin is currently full.\n" + currentTime);
-        Serial.println(currentTime);
-        Serial.println("Bin full");
-        SendEmailChoreo.run();
-      }
-      else if (digitalRead(SENSOR_50) == 0)
-      {  
-        
-        SendEmailChoreo.addInput("Subject", "Your bin is currently half full.\n" + currentTime);
-        Serial.println(currentTime);
-        Serial.println("Bin half full");
-        SendEmailChoreo.run();
-      }
-      else
-      {
-        Serial.println(currentTime);
-        Serial.println("Bin empty");
-      }
-      
-      while(SendEmailChoreo.available()) {
-        char c = SendEmailChoreo.read();
-        Serial.print(c);
-      }
-      SendEmailChoreo.close();
-    }
-  }
-  else 
+  if (digitalRead(MOTION_SENSOR) == 1)
   {
-    Serial.println("Max calls given");
+    delay(10000);
+    int half = digitalRead(SENSOR_50);
+    int full = digitalRead(SENSOR_100);
+    String currentTime = GetDate();
+    
+    // Make a HTTP request:  
+    String APIRequest;
+    APIRequest = String(serverName) + "/pushingbox?devid=" + String(devid) + "&TimeStamp=50&half=" + half + "&full=" + full ;
+    client.get (APIRequest);
+    
+    // if there are incoming bytes available
+    // from the server, read them and print them:
+    while (client.available())
+    {
+      char c = client.read();
+    }
+    
+    Serial.println(currentTime);
+    Serial.println("Sent values: ");
+    Serial.println("half full: " + String(digitalRead(SENSOR_50)) + "\nfull: " + String(digitalRead(SENSOR_100)));
   }
-  Serial.println("Waiting...");
-  delay(10000);
 }
