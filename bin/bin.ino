@@ -10,8 +10,12 @@ and https://github.com/marloft/PushingBoxGoogleSpreadsheet/blob/master/PushingBo
 #include <Process.h>
 
 const int MOTION_SENSOR = 2;  // Sensor to check when someone puts item int bin
-const int SENSOR_50 = 3;      // Sensor for bin being 50% full 
-const int SENSOR_100 = 4;     // Sensor for bin being 100% full
+const byte ULTRASONIC_SENSOR_1 = A0; 
+const byte ULTRASONIC_SENSOR_2 = A1; 
+const byte ULTRASONIC_SENSOR_3 = A2; 
+const byte ULTRASONIC_SENSOR_4 = A3; 
+
+const int BIN_DEPTH = 3;
 
 char devid[] = "v8C89B8298357893";         // DEVICE ID for PushingBox
 char serverName[] = "api.pushingbox.com";  // PushingBox API url
@@ -55,13 +59,18 @@ void loop() {
   if (digitalRead(MOTION_SENSOR) == 1)
   {
     delay(10000);
-    int half = digitalRead(SENSOR_50);
-    int full = digitalRead(SENSOR_100);
+    double result1 = analogRead(ULTRASONIC_SENSOR_1);
+    double result2 = analogRead(ULTRASONIC_SENSOR_2);
+    double result3 = analogRead(ULTRASONIC_SENSOR_3);
+    double result4 = analogRead(ULTRASONIC_SENSOR_4);
+
+    double binFullness = (result1 + result2 + result3 + result4) / (4 * BIN_DEPTH);
+    
     String currentTime = GetDate();
     
     // Make a HTTP request:  
     String APIRequest;
-    APIRequest = String(serverName) + "/pushingbox?devid=" + String(devid) + "&TimeStamp=50&half=" + half + "&full=" + full ;
+    APIRequest = String(serverName) + "/pushingbox?devid=" + String(devid) + "&TimeStamp=50&fullness=" + binFullness;
     client.get (APIRequest);
     
     // if there are incoming bytes available
@@ -73,6 +82,6 @@ void loop() {
     
     Serial.println(currentTime);
     Serial.println("Sent values: ");
-    Serial.println("half full: " + String(digitalRead(SENSOR_50)) + "\nfull: " + String(digitalRead(SENSOR_100)));
+    Serial.println("fullness: " + String(binFullness) + "\nPercentage full: " + String(binFullness * 100));
   }
 }
